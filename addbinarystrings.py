@@ -5,11 +5,11 @@ from time import sleep
 import random
 import sys
 import torch
-import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import math
+import matplotlib.pyplot as plt
 random.seed( 10 )
 
 """## Preparing the input data ##
@@ -145,7 +145,7 @@ optimizer=optim.Adam(model.parameters(),lr=0.001)
 epochs=200
 ### epochs ##
 totalLoss= float("inf")
-while totalLoss > 1e-3:
+while totalLoss > 0.5:
   print(f'Avg. Loss for last {epochs}  epochs = {totalLoss}')
   totalLoss=0
   for i in range(0,epochs): # average the loss over 200 samples
@@ -186,19 +186,37 @@ stringLen=5
 testFlag=1
 # test the network on 10 random binary string addition cases where stringLen=4
 model.eval()
-for i in range (0,3):
-	x,y=getSample(stringLen,testFlag)
-	x_var=torch.from_numpy(x).unsqueeze(1).float()
-	y_var=torch.from_numpy(y).float()
-	seqLen=x_var.size(0)
-	x_var= x_var.contiguous()
-	finalScores = model(x_var).data.t()
+h = np.zeros([1,stringLen+1])
+N = 5
+for i in range (N):
+  x,y=getSample(stringLen,testFlag)
+  x_var=torch.from_numpy(x).unsqueeze(1).float()
+  y_var=torch.from_numpy(y).float()
+  seqLen=x_var.size(0)
+  x_var= x_var.contiguous()
+  finalScores = model(x_var).data.t()
+  bits = np.array(list(map(math.floor,finalScores[0]+0.5)))
+  y = y_var.detach().numpy()
+  y = y.astype(int)
 	#bits = math.floor(finalScores)
-	bits=finalScores.gt(0.5)
-	bits=bits[0].numpy()
+	#bits=finalScores.gt(0.5)
+	#bits=bits[0].numpy()
+  #finalScores+0.5
+  xor = y^bits
+  h = h + xor
+  print ('sum predicted by LSTM is ',bits[::-1])
+  print('##################################################')
+h = h/N
+objects = ('1', '2', '3', '4', '5', '6')
+y_pos = np.arange(len(objects))
+performance = h[0]
 
-	print ('sum predicted by LSTM is ',bits[::-1])
-	print('##################################################')
+plt.bar(y_pos, performance, align='center', alpha=0.5)
+plt.xticks(y_pos, objects)
+plt.ylabel('misses')
+plt.title('misses per bit')
+
+plt.show()
 
 """### Things to try out 
 - See that increasing the hidden size to say 100 worsens the performance
