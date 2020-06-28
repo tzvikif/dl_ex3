@@ -9,6 +9,7 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import math
 random.seed( 10 )
 
 """## Preparing the input data ##
@@ -97,16 +98,23 @@ class Adder (nn.Module):
     self.inputDim=inputDim
     self.hiddenDim=hiddenDim
     self.outputDim=outputDim
-    self.lstm=nn.RNN(inputDim, hiddenDim )
+    #self.lstm=nn.RNN(inputDim, hiddenDim )
+    self.lstm=nn.LSTM(input_size=inputDim,hidden_size=hiddenDim)
     self.outputLayer=nn.Linear(hiddenDim, outputDim)
-    self.sigmoid=nn.Sigmoid()
+    self.sigmoid=torch.sigmoid
   def forward(self, x ):
     #size of x is T x B x featDim
     #B=1 is dummy batch dimension added, because pytorch mandates it
     #if you want B as first dimension of x then specift batchFirst=True when LSTM is initalized
     #T,D  = x.size(0), x.size(1)
     #batch is a must 
-    lstmOut,_ =self.lstm(x ) #x has two  dimensions  seqLen *batch* FeatDim=2
+    h_0 = torch.zeros(
+            1, 1, self.hiddenDim)
+        
+    c_0 = torch.zeros(
+            1, 1, self.hiddenDim)
+        
+    lstmOut,_ =self.lstm(x,(h_0,c_0)) #x has two  dimensions  seqLen *batch* FeatDim=2
     T,B,D  = lstmOut.size(0),lstmOut.size(1) , lstmOut.size(2)
     lstmOut = lstmOut.contiguous() 
         # before  feeding to linear layer we squash one dimension
@@ -114,7 +122,7 @@ class Adder (nn.Module):
     outputLayerActivations=self.outputLayer(lstmOut)
     #reshape actiavtions to T*B*outputlayersize
     outputLayerActivations=outputLayerActivations.view(T,B,-1).squeeze(1)
-    outputSigmoid=self.sigmoid(outputLayerActivations)
+    outputSigmoid=F.sigmoid(outputLayerActivations)
     return outputSigmoid
 
 """### traning the network ###
@@ -129,16 +137,16 @@ outputDim=1 # one output node which would output a zero or 1
 
 lstmSize=10
 
-lossFunction = nn.MSELoss()
+lossFunction = nn.BCELoss()
 model =Adder(featDim, lstmSize, outputDim)
 print ('model initialized')
 #optimizer = optim.SGD(model.parameters(), lr=3e-2, momentum=0.8)
 optimizer=optim.Adam(model.parameters(),lr=0.001)
-epochs=50
+epochs=200
 ### epochs ##
 totalLoss= float("inf")
-while totalLoss > 1e-5:
-  print(" Avg. Loss for last 500 samples = %lf"%(totalLoss))
+while totalLoss > 1e-3:
+  print(f'Avg. Loss for last {epochs}  epochs = {totalLoss}')
   totalLoss=0
   for i in range(0,epochs): # average the loss over 200 samples
     
@@ -168,7 +176,6 @@ while totalLoss > 1e-5:
     
   
   totalLoss=totalLoss/epochs
-  break
 
 """### Testing the model ###
 Remember that the network was purely trained on strings of length =3 <br>
@@ -178,18 +185,19 @@ now lets the net on bitstrings of length=4
 stringLen=5
 testFlag=1
 # test the network on 10 random binary string addition cases where stringLen=4
-for i in range (0,10):
+model.eval()
+for i in range (0,3):
 	x,y=getSample(stringLen,testFlag)
-	x_var=autograd.Variable(torch.from_numpy(x).unsqueeze(1).float())
-	y_var=autograd.Variable(torch.from_numpy(y).float())
+	x_var=torch.from_numpy(x).unsqueeze(1).float()
+	y_var=torch.from_numpy(y).float()
 	seqLen=x_var.size(0)
 	x_var= x_var.contiguous()
 	finalScores = model(x_var).data.t()
-	#print(finalScores)
+	#bits = math.floor(finalScores)
 	bits=finalScores.gt(0.5)
 	bits=bits[0].numpy()
 
-	print ('sum predicted by RNN is ',bits[::-1])
+	print ('sum predicted by LSTM is ',bits[::-1])
 	print('##################################################')
 
 """### Things to try out 
