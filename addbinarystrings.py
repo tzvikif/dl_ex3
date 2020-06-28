@@ -145,7 +145,7 @@ optimizer=optim.Adam(model.parameters(),lr=0.001)
 epochs=200
 ### epochs ##
 totalLoss= float("inf")
-while totalLoss > 0.5:
+while totalLoss > 1e-2:
   print(f'Avg. Loss for last {epochs}  epochs = {totalLoss}')
   totalLoss=0
   for i in range(0,epochs): # average the loss over 200 samples
