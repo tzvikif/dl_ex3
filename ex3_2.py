@@ -35,9 +35,9 @@ class LSTM(nn.Module):
  
         # Define the LSTM layer
         self.lstm = nn.LSTM(input_size=self.input_size,hidden_size=self.hidden_size,num_layers=self.num_layers,batch_first=True)
- 
+        
         # Define the output layer
-        self.linear = nn.Linear(self.hidden_size, output_size)
+        self.fc = nn.Linear(self.batch_size, output_size)
  
     def init_hidden(self):
         # This is what we'll initialise our hidden state as
@@ -54,9 +54,12 @@ class LSTM(nn.Module):
         # Propagate input through LSTM
         lstm_out, (hidden_out,_) = self.lstm(x, (h_0, c_0))
         
-        lstm_out = lstm_out.view(self.hidden_size,-1)
+        batch_first = lstm_out.transpose(0,1)
+        linear_input = batch_first.view(self.batch_size, -1)
+        #lstm_out = lstm_out.reshape(1,self.hidden_size*self.batch_size*MAX_LENGTH)
         
-        out = self.fc(lstm_out)
+        out = self.fc(linear_input)
+        return out
 input_dict = {'00':0,'01':1,'10':2,'11':3}
 output_dict_to_idx = {0:'0',1:'1'}
 output_dict = {'0':0,'1':1}
