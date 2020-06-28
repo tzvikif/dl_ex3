@@ -20,7 +20,8 @@ hidden_dim = 10
 num_epochs = 10
 BATCH_SIZE = 3
 MAX_LENGTH = 6
-input_dim = MAX_LENGTH
+input_size = 1
+
 
 class LSTM(nn.Module):
  
@@ -33,7 +34,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
  
         # Define the LSTM layer
-        self.lstm = nn.LSTM(input_size=self.input_size,hidden_size=self.hidden_size,num_layers=self.num_layers)
+        self.lstm = nn.LSTM(input_size=self.input_size,hidden_size=self.hidden_size,num_layers=self.num_layers,batch_first=True)
  
         # Define the output layer
         self.linear = nn.Linear(self.hidden_size, output_size)
@@ -53,7 +54,7 @@ class LSTM(nn.Module):
         # Propagate input through LSTM
         lstm_out, (hidden_out,_) = self.lstm(x, (h_0, c_0))
         
-        lstm_out = lstm_out.view(-1, self.hidden_size)
+        lstm_out = lstm_out.view(self.hidden_size,-1)
         
         out = self.fc(lstm_out)
 input_dict = {'00':0,'01':1,'10':2,'11':3}
@@ -86,13 +87,13 @@ def generateData(maxLength=MAX_LENGTH,batch=BATCH_SIZE):
             y_single_batch.append([y])
         dataX_prepared.append(x_single_batch)
         dataY_prepared.append(y_single_batch)
-    return torch.tensor(dataX_prepared),torch.tensor(dataY_prepared)
+    return torch.FloatTensor(dataX_prepared),torch.FloatTensor(dataY_prepared)
 
 #def prepareData(data):
 #    for item in data:
 
 dataX,Y = generateData()
-model = LSTM(input_size=dataX.shape[1],hidden_size=hidden_dim,batch_size=dataX.shape[0])
+model = LSTM(input_size=dataX.shape[2],hidden_size=hidden_dim,batch_size=dataX.shape[0])
 loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
 def train(model,trainX,Y):
